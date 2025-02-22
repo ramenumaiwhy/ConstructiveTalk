@@ -9,6 +9,7 @@ export interface ChatSession {
     time: string;
     alcoholLevel: string;
     backLinks: string[];
+    customContexts: { key: string; value: string }[];
   };
   createdAt: number;
   updatedAt: number;

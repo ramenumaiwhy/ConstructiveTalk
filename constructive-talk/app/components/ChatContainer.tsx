@@ -29,12 +29,14 @@ export function ChatContainer() {
     time: string;
     alcoholLevel: string;
     backLinks: string[];
+    customContexts: { key: string; value: string }[];
   }>({
     mood: '',
     location: '',
     time: '',
     alcoholLevel: '0',
     backLinks: [],
+    customContexts: [],
   });
   const [isSessionListOpen, setIsSessionListOpen] = useState(false);
 
@@ -239,6 +241,7 @@ export function ChatContainer() {
           time: '',
           alcoholLevel: '0',
           backLinks: [],
+          customContexts: [],
         });
         setIsNewSession(true);
         setIsContextPanelOpen(true);

@@ -16,6 +16,7 @@ export async function POST(request: Request) {
 - 場所: ${context.location || '未設定'}
 - 時間: ${context.time}
 - アルコールレベル: ${context.alcoholLevel}/3
+${context.customContexts?.map(ctx => `- ${ctx.key}: ${ctx.value}`).join('\n') || ''}
 `
 
     // プロンプトの構築

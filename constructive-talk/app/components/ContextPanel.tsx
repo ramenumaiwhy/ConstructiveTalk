@@ -8,6 +8,7 @@ interface ContextData {
   time: string;
   alcoholLevel: string;
   backLinks: string[];
+  customContexts: { key: string; value: string }[];
 }
 
 interface ContextPanelProps {
@@ -55,6 +56,8 @@ export function ContextPanel({ context, onContextChange, onClose, isNewSession }
   }, [context, onContextChange]);
 
   const [newBackLink, setNewBackLink] = useState('');
+  const [newContextKey, setNewContextKey] = useState('');
+  const [newContextValue, setNewContextValue] = useState('');
 
   const handleContextChange = (key: keyof ContextData, value: string | string[]) => {
     onContextChange({
@@ -79,6 +82,29 @@ export function ContextPanel({ context, onContextChange, onClose, isNewSession }
       e.preventDefault();
       handleAddBackLink();
     }
+  };
+
+  const handleAddCustomContext = () => {
+    if (newContextKey.trim() && newContextValue.trim()) {
+      const customContexts = context.customContexts || [];
+      onContextChange({
+        ...context,
+        customContexts: [...customContexts, { 
+          key: newContextKey.trim(), 
+          value: newContextValue.trim() 
+        }],
+      });
+      setNewContextKey('');
+      setNewContextValue('');
+    }
+  };
+
+  const handleRemoveCustomContext = (keyToRemove: string) => {
+    const customContexts = context.customContexts || [];
+    onContextChange({
+      ...context,
+      customContexts: customContexts.filter(ctx => ctx.key !== keyToRemove),
+    });
   };
 
   return (
@@ -214,6 +240,68 @@ export function ContextPanel({ context, onContextChange, onClose, isNewSession }
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       className="h-4 w-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            カスタムコンテキスト
+          </label>
+          <div className="space-y-2">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                className="flex-1 rounded-lg border border-gray-300 p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={newContextKey}
+                onChange={(e) => setNewContextKey(e.target.value)}
+                placeholder="項目名..."
+              />
+              <input
+                type="text"
+                className="flex-1 rounded-lg border border-gray-300 p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={newContextValue}
+                onChange={(e) => setNewContextValue(e.target.value)}
+                placeholder="値..."
+              />
+              <button
+                onClick={handleAddCustomContext}
+                className="px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+              >
+                追加
+              </button>
+            </div>
+            <div className="flex flex-col gap-2">
+              {(context.customContexts || []).map((ctx) => (
+                <div
+                  key={ctx.key}
+                  className="flex items-center justify-between bg-gray-100 px-3 py-2 rounded-lg"
+                >
+                  <div>
+                    <span className="font-medium">{ctx.key}:</span>
+                    <span className="ml-2">{ctx.value}</span>
+                  </div>
+                  <button
+                    onClick={() => handleRemoveCustomContext(ctx.key)}
+                    className="text-gray-500 hover:text-red-500"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5"
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
