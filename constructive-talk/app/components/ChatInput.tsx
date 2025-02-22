@@ -5,9 +5,11 @@ import { useState, KeyboardEvent, useEffect, useRef } from 'react';
 interface ChatInputProps {
   onSendMessage: (content: string) => void;
   isLoading: boolean;
+  disabled?: boolean;
+  placeholder?: string;
 }
 
-export function ChatInput({ onSendMessage, isLoading }: ChatInputProps) {
+export function ChatInput({ onSendMessage, isLoading, disabled, placeholder }: ChatInputProps) {
   const [message, setMessage] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -56,11 +58,11 @@ export function ChatInput({ onSendMessage, isLoading }: ChatInputProps) {
           <textarea
             ref={textareaRef}
             className="flex-1 min-h-[48px] max-h-[200px] resize-none rounded-lg border border-gray-300 p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="メッセージを入力... (Ctrl/Cmd + Enterで送信)"
+            placeholder={placeholder || "メッセージを入力... (Ctrl/Cmd + Enterで送信)"}
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={handleKeyDown}
-            disabled={isLoading}
+            disabled={isLoading || disabled}
           />
           <p className="text-xs text-gray-500 mt-1 hidden md:block">
             Enterキー: 改行 / Ctrl/Cmd + Enter: 送信
@@ -68,12 +70,12 @@ export function ChatInput({ onSendMessage, isLoading }: ChatInputProps) {
         </div>
         <button
           className={`px-4 py-2 rounded-lg font-medium h-fit ${
-            isLoading || !message.trim()
+            isLoading || !message.trim() || disabled
               ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
               : 'bg-blue-500 text-white hover:bg-blue-600'
           }`}
           onClick={handleSubmit}
-          disabled={isLoading || !message.trim()}
+          disabled={isLoading || !message.trim() || disabled}
         >
           <span className="hidden md:inline">送信</span>
           <svg

@@ -22,24 +22,36 @@ export function ChatContainer() {
   const [error, setError] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string>('');
   const [isContextPanelOpen, setIsContextPanelOpen] = useState(false);
-  const [context, setContext] = useState({
+  const [isNewSession, setIsNewSession] = useState(false);
+  const [context, setContext] = useState<{
+    mood: string;
+    location: string;
+    time: string;
+    alcoholLevel: string;
+    backLinks: string[];
+  }>({
     mood: '',
     location: '',
-    time: new Date().toLocaleTimeString(),
+    time: '',
     alcoholLevel: '0',
+    backLinks: [],
   });
   const [isSessionListOpen, setIsSessionListOpen] = useState(false);
+
+  // コンテキストが設定されているかチェック
+  const isContextSet = true;
 
   // セッションの読み込み
   useEffect(() => {
     const loadSession = async () => {
-      // URLからセッションIDを取得、なければ新規作成
       const urlParams = new URLSearchParams(window.location.search);
       let sid = urlParams.get('session');
       if (!sid) {
         sid = Date.now().toString();
         urlParams.set('session', sid);
         window.history.replaceState({}, '', `?${urlParams.toString()}`);
+        setIsNewSession(true);
+        setIsContextPanelOpen(true);
       }
       setSessionId(sid);
 
@@ -47,7 +59,17 @@ export function ChatContainer() {
         const session = await getSession(sid);
         if (session) {
           setMessages(session.messages);
-          setContext(session.context);
+          setContext({
+            ...session.context,
+            backLinks: session.context.backLinks || [],
+          });
+          setIsNewSession(false);
+        } else {
+          // 新規セッションの場合は空の配列で初期化
+          setContext(prev => ({
+            ...prev,
+            backLinks: [],
+          }));
         }
       } catch (error) {
         console.error('Failed to load session:', error);
@@ -55,7 +77,9 @@ export function ChatContainer() {
       }
     };
 
-    loadSession();
+    if (typeof window !== 'undefined') {
+      loadSession();
+    }
   }, []);
 
   // 自動保存
@@ -81,59 +105,71 @@ export function ChatContainer() {
 
   const handleContextChange = useCallback((newContext: typeof context) => {
     setContext(newContext);
-  }, []);
+    setIsNewSession(false);
+    // 自動保存
+    const session = {
+      id: sessionId,
+      messages,
+      context: newContext,
+      createdAt: parseInt(sessionId),
+      updatedAt: Date.now(),
+    };
+    saveSession(sessionId, session).catch(console.error);
+  }, [sessionId, messages, isNewSession]);
 
-  const handleSendMessage = async (content: string) => {
+  const handleSendMessage = useCallback(async (content: string) => {
     if (!content.trim()) return;
 
-    setError(null);
-    const newMessage: Message = {
-      id: Date.now().toString(),
+    const messageId = `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const userMessage: Message = {
+      id: messageId,
       role: 'user',
       content,
       timestamp: Date.now(),
     };
 
-    setMessages((prev) => [...prev, newMessage]);
+    setMessages(prev => [...prev, userMessage]);
+    setError(null);
     setIsLoading(true);
 
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          messages: [...messages, newMessage],
-          context,
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: content, context }),
       });
 
-      if (!response.ok) {
-        throw new Error('APIリクエストに失敗しました');
-      }
+      if (!response.ok) throw new Error('API request failed');
 
       const data = await response.json();
-      
-      if (data.error) {
-        throw new Error(data.error);
-      }
-
+      const assistantMessageId = `assistant-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
+        id: assistantMessageId,
         role: 'assistant',
         content: data.message,
         timestamp: Date.now(),
       };
 
-      setMessages((prev) => [...prev, assistantMessage]);
+      setMessages(prev => {
+        const newMessages = [...prev, assistantMessage];
+        // メッセージとコンテキストを保存
+        const session = {
+          id: sessionId,
+          messages: newMessages,
+          context,
+          createdAt: parseInt(sessionId),
+          updatedAt: Date.now(),
+        };
+        saveSession(sessionId, session).catch(console.error);
+        return newMessages;
+      });
     } catch (error) {
-      console.error('Error sending message:', error);
-      setError(error instanceof Error ? error.message : '予期せぬエラーが発生しました');
+      console.error('Chat API Error:', error);
+      setError('メッセージの送信に失敗しました');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [sessionId, context]);
 
   const handleSummarize = async () => {
     if (messages.length === 0) return;
@@ -196,15 +232,19 @@ export function ChatContainer() {
         // 既存のセッションの場合
         setMessages(session.messages);
         setContext(session.context);
+        setIsNewSession(false);
       } else {
         // 新規セッションの場合
         setMessages([]);
         setContext({
           mood: '',
           location: '',
-          time: new Date().toLocaleTimeString(),
+          time: '',
           alcoholLevel: '0',
+          backLinks: [],
         });
+        setIsNewSession(true);
+        setIsContextPanelOpen(true);
       }
       setSessionId(selectedSessionId);
       
@@ -222,63 +262,23 @@ export function ChatContainer() {
   }, []);
 
   return (
-    <div className="relative flex flex-col h-[calc(100vh-12rem)]">
-      {/* モバイル用セッションリストトグルボタン */}
-      <button
-        className="md:hidden fixed top-4 left-4 z-50 bg-blue-500 text-white p-2 rounded-full shadow-lg"
-        onClick={() => setIsSessionListOpen(!isSessionListOpen)}
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="h-6 w-6"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M4 6h16M4 12h16M4 18h16"
-          />
-        </svg>
-      </button>
-
-      {/* モバイル用コンテキストパネルトグルボタン */}
-      <button
-        className="md:hidden fixed top-4 right-4 z-50 bg-blue-500 text-white p-2 rounded-full shadow-lg"
-        onClick={() => setIsContextPanelOpen(!isContextPanelOpen)}
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="h-6 w-6"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-          />
-        </svg>
-      </button>
-
+    <div className="relative flex flex-col md:flex-row h-[calc(100vh-12rem)] gap-6">
       {/* セッションリスト */}
       <div
         className={`fixed inset-y-0 left-0 w-80 bg-white shadow-lg transform transition-transform duration-300 ease-in-out ${
           isSessionListOpen ? 'translate-x-0' : '-translate-x-full'
-        } md:relative md:translate-x-0 md:shadow-none md:mr-4`}
+        } md:relative md:translate-x-0 md:w-80 md:min-w-[20rem] md:shadow-none md:bg-transparent z-50`}
       >
-        <SessionList
-          onSessionSelect={handleSessionSelect}
-          currentSessionId={sessionId}
-        />
+        <div className="h-full bg-white rounded-lg shadow-lg">
+          <SessionList
+            onSessionSelect={handleSessionSelect}
+            currentSessionId={sessionId}
+          />
+        </div>
       </div>
 
       {/* メインチャットエリア */}
-      <div className="flex-1 flex flex-col bg-white rounded-lg shadow-lg overflow-hidden">
+      <div className="flex-1 flex flex-col bg-white rounded-lg shadow-lg overflow-hidden min-w-0">
         {/* ヘッダー */}
         <div className="p-4 border-b flex justify-between items-center">
           <h2 className="text-lg font-semibold">チャット</h2>
@@ -307,9 +307,49 @@ export function ChatContainer() {
 
         {/* メッセージエリア */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {messages.map((message) => (
-            <ChatMessage key={message.id} message={message} />
-          ))}
+          {isNewSession ? (
+            <div className="flex flex-col items-center justify-center h-full text-center p-4">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-12 w-12 text-blue-500 mb-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              <h3 className="text-xl font-semibold mb-2">新しいセッションを開始</h3>
+              <p className="text-gray-600 mb-4">
+                右側のパネルで現在の状況を設定できます。
+                設定は後からでも変更可能です。
+              </p>
+              <div className="space-x-4">
+                <button
+                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                  onClick={() => setIsContextPanelOpen(true)}
+                >
+                  状況を設定する
+                </button>
+                <button
+                  className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
+                  onClick={() => setIsNewSession(false)}
+                >
+                  スキップ
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              {messages.map((message) => (
+                <ChatMessage key={`${message.id}-${message.timestamp}`} message={message} />
+              ))}
+            </>
+          )}
           {isLoading && (
             <div className="flex justify-center items-center py-4">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
@@ -323,21 +363,70 @@ export function ChatContainer() {
           )}
           <div ref={messageEndRef} />
         </div>
-        <ChatInput onSendMessage={handleSendMessage} isLoading={isLoading} />
+        <ChatInput 
+          onSendMessage={handleSendMessage} 
+          isLoading={isLoading}
+          disabled={false}
+          placeholder={isNewSession ? "状況を設定せずにチャットを開始できます" : "メッセージを入力... (Ctrl/Cmd + Enterで送信)"}
+        />
       </div>
 
       {/* コンテキストパネル */}
       <div
         className={`fixed inset-y-0 right-0 w-80 bg-white shadow-lg transform transition-transform duration-300 ease-in-out ${
           isContextPanelOpen ? 'translate-x-0' : 'translate-x-full'
-        } md:relative md:translate-x-0 md:shadow-none md:ml-4`}
+        } md:relative md:translate-x-0 md:w-80 md:min-w-[20rem] md:shadow-none md:bg-transparent z-50`}
       >
-        <ContextPanel
-          context={context}
-          onContextChange={handleContextChange}
-          onClose={() => setIsContextPanelOpen(false)}
-        />
+        <div className="h-full bg-white rounded-lg shadow-lg">
+          <ContextPanel
+            context={context}
+            onContextChange={handleContextChange}
+            onClose={() => setIsContextPanelOpen(false)}
+            isNewSession={isNewSession}
+          />
+        </div>
       </div>
+
+      {/* モバイル用トグルボタン */}
+      <button
+        className="md:hidden fixed top-4 left-4 z-50 bg-blue-500 text-white p-2 rounded-full shadow-lg"
+        onClick={() => setIsSessionListOpen(!isSessionListOpen)}
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="h-6 w-6"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M4 6h16M4 12h16M4 18h16"
+          />
+        </svg>
+      </button>
+
+      <button
+        className="md:hidden fixed top-4 right-4 z-50 bg-blue-500 text-white p-2 rounded-full shadow-lg"
+        onClick={() => setIsContextPanelOpen(!isContextPanelOpen)}
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="h-6 w-6"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+          />
+        </svg>
+      </button>
     </div>
   );
 } 

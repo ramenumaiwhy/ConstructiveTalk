@@ -7,10 +7,7 @@ const model = genAI.getGenerativeModel({ model: 'gemini-pro' })
 
 export async function POST(request: Request) {
   try {
-    const { messages, context } = await request.json()
-
-    // 最新のメッセージを取得
-    const lastMessage = messages[messages.length - 1]
+    const { message, context } = await request.json()
 
     // コンテキスト情報を文字列化
     const contextStr = `
@@ -34,7 +31,7 @@ export async function POST(request: Request) {
 
 ${contextStr}
 
-ユーザーメッセージ: ${lastMessage.content}
+ユーザーメッセージ: ${message}
 `
 
     // 応答の生成

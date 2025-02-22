@@ -8,6 +8,7 @@ export interface ChatSession {
     location: string;
     time: string;
     alcoholLevel: string;
+    backLinks: string[];
   };
   createdAt: number;
   updatedAt: number;
@@ -63,5 +64,18 @@ export async function listSessions(limit = 10): Promise<ChatSession[]> {
   } catch (error) {
     console.error('Failed to list sessions from localStorage:', error);
     return [];
+  }
+}
+
+export async function deleteSession(sessionId: string) {
+  if (typeof window === 'undefined') return;
+  
+  try {
+    localStorage.removeItem(`${STORAGE_PREFIX}${sessionId}`);
+    localStorage.removeItem(`${STORAGE_PREFIX}${sessionId}:lastSaved`);
+    return true;
+  } catch (error) {
+    console.error('Failed to delete session from localStorage:', error);
+    return false;
   }
 } 

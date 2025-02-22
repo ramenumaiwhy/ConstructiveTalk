@@ -12,6 +12,7 @@ interface SummarizeRequest {
     location: string
     time: string
     alcoholLevel: string
+    backLinks: string[]
   }
 }
 
@@ -71,6 +72,7 @@ ${messages.map(msg => `${msg.role === 'user' ? '👤' : '🤖'}: ${msg.content}`
     const markdown = `# ${fileName}
 作成日時: ${new Date().toLocaleString('ja-JP')}
 
+${context.backLinks.map(link => `[${link}]`).join('\n')}
 [businessideas]
 
 ${summary}
@@ -80,6 +82,7 @@ ${summary}
 - 場所: ${context.location || '未設定'}
 - 時間: ${context.time}
 - アルコールレベル: ${context.alcoholLevel}/3
+- Back Links: ${context.backLinks.length > 0 ? context.backLinks.map(link => `[${link}]`).join(', ') : 'なし'}
 
 ## 完全な対話記録
 ${messages.map(msg => `### ${msg.role === 'user' ? 'ユーザー' : 'アシスタント'} (${new Date(msg.timestamp).toLocaleTimeString('ja-JP')})

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ChatSession, listSessions } from '../lib/kv';
+import { ChatSession, listSessions, deleteSession } from '../lib/kv';
 
 interface SessionListProps {
   onSessionSelect: (sessionId: string) => void;
@@ -11,23 +11,40 @@ export function SessionList({ onSessionSelect, currentSessionId }: SessionListPr
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const loadSessions = async () => {
-      try {
-        const sessionList = await listSessions();
-        // 日付の新しい順にソート
-        sessionList.sort((a, b) => b.updatedAt - a.updatedAt);
-        setSessions(sessionList);
-      } catch (error) {
-        console.error('Failed to load sessions:', error);
-        setError('セッション一覧の読み込みに失敗しました');
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const loadSessions = async () => {
+    try {
+      const sessionList = await listSessions();
+      sessionList.sort((a, b) => b.updatedAt - a.updatedAt);
+      setSessions(sessionList);
+    } catch (error) {
+      console.error('Failed to load sessions:', error);
+      setError('セッション一覧の読み込みに失敗しました');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
+  useEffect(() => {
     loadSessions();
   }, []);
+
+  const handleDeleteSession = async (sessionId: string, event: React.MouseEvent) => {
+    event.stopPropagation();
+    if (!window.confirm('このセッションを削除してもよろしいですか？')) {
+      return;
+    }
+
+    try {
+      await deleteSession(sessionId);
+      await loadSessions();
+      if (sessionId === currentSessionId) {
+        onSessionSelect(Date.now().toString());
+      }
+    } catch (error) {
+      console.error('Failed to delete session:', error);
+      setError('セッションの削除に失敗しました');
+    }
+  };
 
   if (isLoading) {
     return (
@@ -80,15 +97,17 @@ export function SessionList({ onSessionSelect, currentSessionId }: SessionListPr
       </div>
       <div className="divide-y overflow-y-auto flex-1">
         {sessions.map((session) => (
-          <button
+          <div
             key={session.id}
-            onClick={() => onSessionSelect(session.id)}
-            className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
+            className={`w-full px-4 py-3 hover:bg-gray-50 transition-colors ${
               session.id === currentSessionId ? 'bg-blue-50' : ''
             }`}
           >
             <div className="flex justify-between items-start">
-              <div className="flex-1">
+              <div 
+                className="flex-1 cursor-pointer" 
+                onClick={() => onSessionSelect(session.id)}
+              >
                 <p className="font-medium">
                   {new Date(session.createdAt).toLocaleString('ja-JP', {
                     dateStyle: 'medium',
@@ -104,11 +123,33 @@ export function SessionList({ onSessionSelect, currentSessionId }: SessionListPr
                   </p>
                 )}
               </div>
-              {session.id === currentSessionId && (
-                <span className="text-blue-500 text-sm">現在のセッション</span>
-              )}
+              <div className="flex items-center gap-2">
+                {session.id === currentSessionId && (
+                  <span className="text-blue-500 text-sm">現在のセッション</span>
+                )}
+                <button
+                  onClick={(e) => handleDeleteSession(session.id, e)}
+                  className="text-gray-400 hover:text-red-500 p-1"
+                  title="セッションを削除"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                    />
+                  </svg>
+                </button>
+              </div>
             </div>
-          </button>
+          </div>
         ))}
       </div>
     </div>
