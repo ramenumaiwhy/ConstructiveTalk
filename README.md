@@ -14,10 +14,102 @@
    - アルコールレベル（0-5段階）
    - ムード（選択式）
    - 場所（自由入力）
+   - 同日コンテキストの再利用オプション
 
 3. **会話ログ管理**
    - エッジストレージでの永続化
    - 重要なポイントのマークとタグ付け
+   - 5分間隔での自動保存機能
+
+## 🚀 開発ガイド
+
+### 開発環境のセットアップ
+
+#### 必要条件
+- Node.js 18.0.0以上
+- pnpm 8.0.0以上
+- Git
+- VSCode（推奨エディタ）
+
+#### 初期セットアップ
+```bash
+# リポジトリのクローン
+git clone https://github.com/ramenumaiwhy/constructive-talk.git
+cd constructive-talk
+
+# 依存パッケージのインストール
+pnpm install
+
+# 環境変数の設定
+cp .env.example .env.local
+```
+
+#### 環境変数の設定
+`.env.local`に以下を設定：
+- OPENAI_API_KEY
+- NEXT_PUBLIC_APP_URL
+- DATABASE_URL
+
+### 開発環境の構築
+
+#### フロントエンド
+```bash
+# TypeScript設定
+pnpm add -D typescript @types/node @types/react
+
+# UIライブラリ
+pnpm add @radix-ui/react-* @shadcn/ui
+
+# スタイリング
+pnpm add -D tailwindcss postcss autoprefixer
+npx tailwindcss init -p
+```
+
+#### バックエンド
+```bash
+# Honoセットアップ
+pnpm add hono @hono/node-server
+
+# データベース
+pnpm add @prisma/client
+pnpm add -D prisma
+```
+
+#### AI/LLM
+```bash
+# Vercel AI SDK
+pnpm add ai openai
+
+# LangChain
+pnpm add langchain
+```
+
+### コーディング規約
+
+1. **基本ルール**
+   - ESLint/Prettier設定に従う
+   - アトミックデザインベースのコンポーネント構築
+   - 型安全性重視のTypeScript使用
+
+2. **コミット規約**
+   - Conventional Commits形式
+   - PRテンプレート使用
+   - コードレビューガイドライン遵守
+
+3. **ドキュメント**
+   - JSDoc形式のコメント
+   - 変更履歴の記録
+   - README.mdの定期的更新
+
+### デプロイメント
+
+```bash
+# Vercelへのデプロイ
+vercel
+
+# 本番環境へのデプロイ
+vercel --prod
+```
 
 ## 🌟 主な機能
 
@@ -51,6 +143,23 @@
 ## 🛠 技術スタック
 
 技術スタックの詳細については[TECHSTACK.md](TECH_STACK.md)を参照してください。
+
+## 🔧 トラブルシューティング
+
+### よくある問題と解決方法
+1. **依存関係の問題**
+   ```bash
+   pnpm clean && pnpm install
+   ```
+
+2. **ビルドエラー**
+   ```bash
+   pnpm clean:build && pnpm build
+   ```
+
+3. **環境変数の問題**
+   - .env.localの設定確認
+   - 必要な環境変数の存在確認
 
 ## 📄 ライセンス
 
