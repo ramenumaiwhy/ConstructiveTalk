@@ -38,9 +38,6 @@ export function ChatContainer() {
   });
   const [isSessionListOpen, setIsSessionListOpen] = useState(false);
 
-  // コンテキストが設定されているかチェック
-  const isContextSet = true;
-
   // セッションの読み込み
   useEffect(() => {
     const loadSession = async () => {
@@ -115,7 +112,7 @@ export function ChatContainer() {
       updatedAt: Date.now(),
     };
     saveSession(sessionId, session).catch(console.error);
-  }, [sessionId, messages, isNewSession]);
+  }, [sessionId, messages]);
 
   const handleSendMessage = useCallback(async (content: string) => {
     if (!content.trim()) return;
