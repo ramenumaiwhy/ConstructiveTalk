@@ -15,6 +15,18 @@ interface ContextPanelProps {
   onClose?: () => void;
 }
 
+const MOOD_OPTIONS = [
+  { value: '', label: '選択してください' },
+  { value: '集中', label: '集中' },
+  { value: 'リラックス', label: 'リラックス' },
+  { value: '疲れ気味', label: '疲れ気味' },
+  { value: 'わくわく', label: 'わくわく' },
+  { value: '眠い', label: '眠い' },
+  { value: 'やる気満々', label: 'やる気満々' },
+  { value: '不安', label: '不安' },
+  { value: '退屈', label: '退屈' },
+];
+
 export function ContextPanel({ context, onContextChange, onClose }: ContextPanelProps) {
   // 1分ごとに時間を更新
   useEffect(() => {
@@ -67,13 +79,17 @@ export function ContextPanel({ context, onContextChange, onClose }: ContextPanel
           <label className="block text-sm font-medium text-gray-700 mb-1">
             気分
           </label>
-          <input
-            type="text"
+          <select
             className="w-full rounded-lg border border-gray-300 p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             value={context.mood}
             onChange={(e) => handleContextChange('mood', e.target.value)}
-            placeholder="例：リラックス、集中、疲れ気味..."
-          />
+          >
+            {MOOD_OPTIONS.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div>

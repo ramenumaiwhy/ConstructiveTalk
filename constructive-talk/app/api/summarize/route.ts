@@ -19,8 +19,26 @@ export async function POST(request: Request) {
   try {
     const { messages, context }: SummarizeRequest = await request.json()
 
-    const prompt = `
+    // ファイル名生成用のプロンプト
+    const fileNamePrompt = `
+以下の会話内容から、この対話の本質を端的に表すファイル名を生成してください。
+ファイル名は日本語で、30文字以内にしてください。
+拡張子は含めないでください。
+
+# 対話内容
+${messages.map(msg => `${msg.role === 'user' ? '👤' : '🤖'}: ${msg.content}`).join('\n')}
+`
+
+    // ファイル名の生成
+    const fileNameResult = await model.generateContent(fileNamePrompt)
+    const fileNameResponse = await fileNameResult.response
+    const fileName = fileNameResponse.text().trim()
+
+    // 要約生成用のプロンプト
+    const summaryPrompt = `
 あなたは対話記録をまとめるアシスタントです。以下の対話記録を分析し、Markdown形式でまとめてください。
+
+[businessideas]
 
 # コンテキスト情報
 - 気分: ${context.mood || '未設定'}
@@ -44,15 +62,16 @@ ${messages.map(msg => `${msg.role === 'user' ? '👤' : '🤖'}: ${msg.content}`
 - 建設的な視点を維持してください
 `
 
-    const result = await model.generateContent(prompt)
+    const result = await model.generateContent(summaryPrompt)
     const response = await result.response
     const summary = response.text()
 
     // Markdownファイルの生成
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
-    const filename = `chat-summary-${timestamp}.md`
-    const markdown = `# チャット記録まとめ
+    const markdown = `# ${fileName}
 作成日時: ${new Date().toLocaleString('ja-JP')}
+
+[businessideas]
 
 ${summary}
 
@@ -68,7 +87,11 @@ ${msg.content}
 `).join('\n')}
 `
 
-    return NextResponse.json({ summary, markdown, filename })
+    return NextResponse.json({ 
+      summary, 
+      markdown, 
+      filename: `${fileName}_${timestamp}.md` 
+    })
   } catch (error) {
     console.error('Summarize API Error:', error)
     return NextResponse.json(
