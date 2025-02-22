@@ -8,7 +8,7 @@
 - **Biome**：コードの品質をチェックする道具。「ここはもっと分かりやすく書けるよ」とアドバイスをくれる
 
 ### フロントエンド（画面表示）関連
-- **Next.js**：ウェブアプリを作るための総合的な道具箱。画面の表示が速く、検索エンジンにも優しい
+- **Next.js (Pages Router)**：ウェブアプリを作るための総合的な道具箱。クライアントサイドレンダリングを使用して、シンプルな構成で開発可能
 - **React**：画面の部品（ボタンや入力欄など）を作るための道具。レゴブロックのように組み立てられる
 - **TailwindCSS**：ウェブサイトをデザインするための「デジタルお絵かきセット」
 - **Shadcn UI**：すぐに使える綺麗なボタンやフォームなどの部品セット
@@ -41,7 +41,7 @@
   - 画像/音声対応
 
 ### 管理画面（フロントエンド）
-- **フレームワーク**: Next.js (App Router)
+- **フレームワーク**: Next.js (Pages Router + CSR)
 - **言語**: TypeScript
 - **スタイリング**: TailwindCSS + Shadcn UI
 - **HTTP Client**: SWR
@@ -49,7 +49,7 @@
 - **データグリッド**: TanStack Table
 
 ### バックエンド
-- **APIルーティング**: Next.js API Routes
+- **APIルーティング**: Next.js API Routes (Pages)
 - **デプロイ**: Vercel
 - **データストレージ**: 
   - KV: Vercel KV
@@ -120,7 +120,7 @@
   - クイックリプライ
 
 ### 管理画面（フロントエンド）
-- **フレームワーク**: Next.js (App Router)
+- **フレームワーク**: Next.js (Pages Router + CSR)
 - **言語**: TypeScript
 - **スタイリング**: TailwindCSS
 - **HTTP Client**: SWR

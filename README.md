@@ -42,6 +42,9 @@ pnpm install
 
 # 環境変数の設定
 cp .env.example .env.local
+
+# Next.jsの設定
+# next.config.jsでSSRを無効化
 ```
 
 #### 環境変数の設定
@@ -51,6 +54,16 @@ cp .env.example .env.local
 - DATABASE_URL
 
 ### 開発環境の構築
+
+#### Next.jsの設定
+```javascript
+// next.config.js
+module.exports = {
+  // SSRを無効化
+  unstable_runtimeJS: true,
+  unstable_JsPreload: false
+}
+```
 
 #### フロントエンド
 ```bash
