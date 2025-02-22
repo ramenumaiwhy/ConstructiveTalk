@@ -1,5 +1,5 @@
 import express from 'express';
-import { middleware, WebhookEvent, Client } from '@line/bot-sdk';
+import { middleware, WebhookEvent, Client, MiddlewareConfig } from '@line/bot-sdk';
 import { lineConfig, port } from './config/line';
 import { handleEvent } from './controllers/lineController';
 
@@ -7,32 +7,41 @@ const app = express();
 const client = new Client(lineConfig);
 
 // リクエストロギングミドルウェア
-app.use((req, res, next) => {
+const requestLogger: express.RequestHandler = (req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
   console.log('Headers:', req.headers);
   if (req.method !== 'GET') {
     console.log('Body:', req.body);
   }
   next();
-});
+};
 
 // ミドルウェアの設定
+app.use(requestLogger);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // CORSミドルウェア
-app.use((req, res, next) => {
+const corsMiddleware: express.RequestHandler = (req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, x-line-signature');
   if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+    res.status(200).end();
+    return;
   }
   next();
-});
+};
+
+app.use(corsMiddleware);
+
+// LINE Botの設定
+const middlewareConfig: MiddlewareConfig = {
+  channelSecret: lineConfig.channelSecret || ''
+};
 
 // Webhookエンドポイント
-app.post('/webhook', middleware(lineConfig), async (req, res) => {
+app.post('/webhook', middleware(middlewareConfig), async (req: express.Request, res: express.Response) => {
   console.log('[Webhook] Request received:', {
     headers: req.headers,
     body: req.body
@@ -44,7 +53,8 @@ app.post('/webhook', middleware(lineConfig), async (req, res) => {
 
     if (!events || events.length === 0) {
       console.log('[Webhook] No events received');
-      return res.status(200).end();
+      res.status(200).end();
+      return;
     }
 
     await Promise.all(
@@ -61,10 +71,10 @@ app.post('/webhook', middleware(lineConfig), async (req, res) => {
     );
 
     console.log('[Webhook] All events processed successfully');
-    return res.status(200).end();
+    res.status(200).end();
   } catch (err) {
     console.error('[Webhook] Error:', err);
-    return res.status(500).json({
+    res.status(500).json({
       message: 'Internal server error',
       error: err instanceof Error ? err.message : 'Unknown error'
     });
@@ -93,11 +103,11 @@ app.get('/', (_, res) => {
 });
 
 // エラーハンドリング
-app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error('[Error] Unhandled error:', err);
   res.status(500).json({
     message: 'Internal server error',
-    error: err instanceof Error ? err.message : 'Unknown error'
+    error: err.message
   });
 });
 
