@@ -50,7 +50,37 @@
 - **モニタリング**: Sentry
 - **アナリティクス**: PostHog
 
-## 💡 ミニマルパターン（最小工数実装）
+### データ管理
+- **ストレージ**
+  - Vercel KV (メインストレージ)
+  - IndexedDB (ローカルストレージ)
+  - localStorage (一時保存)
+- **同期**
+  - WebSocket (リアルタイム同期)
+  - Background Sync API
+  - Conflict Resolution
+
+### セッション管理
+- **自動保存**
+  - Custom React Hooks
+  - Web Workers
+  - Service Workers
+- **コンテキスト管理**
+  - Context API
+  - SWR for キャッシュ
+  - Zustand for 状態管理
+
+### オフライン対応
+- **PWA**
+  - next-pwa
+  - Workbox
+  - Cache API
+- **同期**
+  - IndexedDB
+  - Background Sync
+  - Push API
+
+## �� ミニマルパターン（最小工数実装）
 
 ### チャットボット
 - **プラットフォーム**: LINE Messaging API
@@ -82,3 +112,24 @@
 - **パッケージマネージャー**: pnpm
 - **リンター**: Biome
 - **Git管理**: GitHub 
+
+### データ管理
+- **ストレージ**
+  - Vercel KV
+  - localStorage
+- **同期**
+  - 基本的な HTTP ポーリング
+
+### セッション管理
+- **自動保存**
+  - setInterval
+  - Custom Hooks
+- **コンテキスト管理**
+  - Context API
+  - localStorage
+
+### オフライン対応
+- **基本機能**
+  - localStorage
+  - エラーハンドリング
+  - 再接続ロジック 
