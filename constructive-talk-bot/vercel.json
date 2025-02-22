@@ -28,5 +28,7 @@
   "env": {
     "NODE_ENV": "production"
   },
-  "public": true
+  "public": true,
+  "installCommand": "pnpm install",
+  "buildCommand": "pnpm run build"
 }

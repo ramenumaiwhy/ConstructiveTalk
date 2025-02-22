@@ -260,8 +260,14 @@ export function ContextPanel({ context, onContextChange, onClose, isNewSession }
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            カスタムコンテキスト
+            追加の状況設定
           </label>
+          <div className="bg-blue-50 p-3 rounded-lg mb-3">
+            <p className="text-sm text-blue-700">
+              AIに伝えたい追加情報を自由に設定できます。
+              例：「勉強している科目：数学」「趣味：ギター」「目標：プレゼン準備」
+            </p>
+          </div>
           <div className="space-y-2">
             <div className="flex gap-2">
               <input
@@ -269,14 +275,14 @@ export function ContextPanel({ context, onContextChange, onClose, isNewSession }
                 className="flex-1 rounded-lg border border-gray-300 p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 value={newContextKey}
                 onChange={(e) => setNewContextKey(e.target.value)}
-                placeholder="項目名..."
+                placeholder="どんな情報？（例：勉強している科目）"
               />
               <input
                 type="text"
                 className="flex-1 rounded-lg border border-gray-300 p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 value={newContextValue}
                 onChange={(e) => setNewContextValue(e.target.value)}
-                placeholder="値..."
+                placeholder="具体的な内容（例：数学）"
               />
               <button
                 onClick={handleAddCustomContext}
@@ -291,13 +297,14 @@ export function ContextPanel({ context, onContextChange, onClose, isNewSession }
                   key={ctx.key}
                   className="flex items-center justify-between bg-gray-100 px-3 py-2 rounded-lg"
                 >
-                  <div>
-                    <span className="font-medium">{ctx.key}:</span>
-                    <span className="ml-2">{ctx.value}</span>
+                  <div className="flex-1">
+                    <span className="text-gray-600">{ctx.key}：</span>
+                    <span className="font-medium">{ctx.value}</span>
                   </div>
                   <button
                     onClick={() => handleRemoveCustomContext(ctx.key)}
-                    className="text-gray-500 hover:text-red-500"
+                    className="text-gray-500 hover:text-red-500 ml-2"
+                    title="この情報を削除"
                   >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"

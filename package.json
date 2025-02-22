@@ -1,5 +1,13 @@
 {
-	"dependencies": {
-		"@vercel/kv": "^3.0.0"
-	}
+	"name": "constructive-talk",
+	"version": "1.0.0",
+	"private": true,
+	"workspaces": [
+		"constructive-talk-bot"
+	],
+	"scripts": {
+		"build": "cd constructive-talk-bot && pnpm install && pnpm run build",
+		"start": "cd constructive-talk-bot && pnpm start"
+	},
+	"packageManager": "pnpm@10.4.1"
 }
