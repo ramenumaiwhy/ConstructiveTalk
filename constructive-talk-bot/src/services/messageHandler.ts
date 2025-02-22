@@ -55,45 +55,15 @@ async function handleSummaryRequest(message: string, replyToken: string): Promis
     // Markdownファイルの生成
     const markdown = await generateMarkdown(message);
     
-    // ファイルをLINEに送信
+    // Markdownテキストを直接送信
     await lineClient.replyMessage(replyToken, [
       {
         type: 'text',
-        text: 'まとめのMarkdownファイルを生成しました。'
+        text: '会話のまとめを生成しました：\n\n' + markdown
       },
       {
-        type: 'flex',
-        altText: 'まとめのダウンロード',
-        contents: {
-          type: 'bubble',
-          body: {
-            type: 'box',
-            layout: 'vertical',
-            contents: [
-              {
-                type: 'text',
-                text: 'まとめをダウンロード',
-                weight: 'bold',
-                size: 'lg'
-              }
-            ]
-          },
-          footer: {
-            type: 'box',
-            layout: 'vertical',
-            contents: [
-              {
-                type: 'button',
-                style: 'primary',
-                action: {
-                  type: 'uri',
-                  label: 'ダウンロード',
-                  uri: `data:text/markdown;base64,${Buffer.from(markdown).toString('base64')}`
-                }
-              }
-            ]
-          }
-        }
+        type: 'text',
+        text: 'このテキストをコピーしてMarkdownエディタに貼り付けることができます。'
       }
     ]);
   } catch (error) {
@@ -112,6 +82,7 @@ async function generateMarkdown(message: string): Promise<string> {
 2. 結論や次のアクションを明確に
 3. 必要に応じて見出しを使用して構造化
 4. コードブロックやリンクなどのMarkdown記法を適切に使用
+5. 全体の長さは2000文字以内に収める
 
 会話内容: ${message}
 `;
