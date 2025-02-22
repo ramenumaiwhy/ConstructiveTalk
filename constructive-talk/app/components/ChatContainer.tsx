@@ -16,8 +16,10 @@ export interface Message {
 export function ChatContainer() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSummarizing, setIsSummarizing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string>('');
+  const [isContextPanelOpen, setIsContextPanelOpen] = useState(false);
   const [context, setContext] = useState({
     mood: '',
     location: '',
@@ -130,9 +132,103 @@ export function ChatContainer() {
     }
   };
 
+  const handleSummarize = async () => {
+    if (messages.length === 0) return;
+    setIsSummarizing(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/summarize', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages,
+          context,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('まとめの生成に失敗しました');
+      }
+
+      const data = await response.json();
+      
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      // Markdownファイルのダウンロード
+      const blob = new Blob([data.markdown], { type: 'text/markdown' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = data.filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Error summarizing chat:', error);
+      setError(error instanceof Error ? error.message : '予期せぬエラーが発生しました');
+    } finally {
+      setIsSummarizing(false);
+    }
+  };
+
   return (
-    <div className="flex flex-col md:flex-row gap-4 h-[calc(100vh-12rem)]">
+    <div className="relative flex flex-col h-[calc(100vh-12rem)]">
+      {/* モバイル用コンテキストパネルトグルボタン */}
+      <button
+        className="md:hidden fixed top-4 right-4 z-50 bg-blue-500 text-white p-2 rounded-full shadow-lg"
+        onClick={() => setIsContextPanelOpen(!isContextPanelOpen)}
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="h-6 w-6"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+          />
+        </svg>
+      </button>
+
+      {/* メインチャットエリア */}
       <div className="flex-1 flex flex-col bg-white rounded-lg shadow-lg overflow-hidden">
+        {/* ヘッダー */}
+        <div className="p-4 border-b flex justify-between items-center">
+          <h2 className="text-lg font-semibold">チャット</h2>
+          <button
+            className={`px-4 py-2 rounded-lg font-medium ${
+              messages.length === 0 || isSummarizing
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                : 'bg-green-500 text-white hover:bg-green-600'
+            }`}
+            onClick={handleSummarize}
+            disabled={messages.length === 0 || isSummarizing}
+          >
+            {isSummarizing ? (
+              <span className="flex items-center">
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                まとめを作成中...
+              </span>
+            ) : (
+              'まとめをダウンロード'
+            )}
+          </button>
+        </div>
+
+        {/* メッセージエリア */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {messages.map((message) => (
             <ChatMessage key={message.id} message={message} />
@@ -151,7 +247,19 @@ export function ChatContainer() {
         </div>
         <ChatInput onSendMessage={handleSendMessage} isLoading={isLoading} />
       </div>
-      <ContextPanel context={context} onContextChange={handleContextChange} />
+
+      {/* コンテキストパネル */}
+      <div
+        className={`fixed inset-y-0 right-0 w-80 bg-white shadow-lg transform transition-transform duration-300 ease-in-out ${
+          isContextPanelOpen ? 'translate-x-0' : 'translate-x-full'
+        } md:relative md:translate-x-0 md:shadow-none md:ml-4`}
+      >
+        <ContextPanel
+          context={context}
+          onContextChange={handleContextChange}
+          onClose={() => setIsContextPanelOpen(false)}
+        />
+      </div>
     </div>
   );
 } 
