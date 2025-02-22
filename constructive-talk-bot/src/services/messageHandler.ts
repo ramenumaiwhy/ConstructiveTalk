@@ -11,9 +11,9 @@ const lineClient = new Client(lineConfig);
 
 export async function handleMessage(message: string, replyToken: string): Promise<void> {
   try {
-    // まとめコマンドの検出
-    if (message.includes('まとめて') || message.includes('md出力')) {
-      await handleSummaryRequest(message, replyToken);
+    // md出力コマンドの検出
+    if (message.includes('md出力')) {
+      await handleSummaryRequest(message.replace('md出力', '').trim(), replyToken);
       return;
     }
 
@@ -59,7 +59,7 @@ async function handleSummaryRequest(message: string, replyToken: string): Promis
     await lineClient.replyMessage(replyToken, [
       {
         type: 'text',
-        text: '会話のまとめを生成しました：\n\n' + markdown
+        text: 'Markdown形式でまとめました：\n\n' + markdown
       },
       {
         type: 'text',
@@ -70,21 +70,21 @@ async function handleSummaryRequest(message: string, replyToken: string): Promis
     console.error('Summary Generation Error:', error);
     await lineClient.replyMessage(replyToken, {
       type: 'text',
-      text: 'まとめの生成中にエラーが発生しました。'
+      text: 'Markdown形式への変換中にエラーが発生しました。'
     });
   }
 }
 
 async function generateMarkdown(message: string): Promise<string> {
   const prompt = `
-以下の会話内容をMarkdown形式でまとめてください：
+以下の内容をMarkdown形式で整理してください：
 1. 重要なポイントを箇条書きで整理
 2. 結論や次のアクションを明確に
 3. 必要に応じて見出しを使用して構造化
 4. コードブロックやリンクなどのMarkdown記法を適切に使用
 5. 全体の長さは2000文字以内に収める
 
-会話内容: ${message}
+内容: ${message}
 `;
 
   const result = await model.generateContent(prompt);
