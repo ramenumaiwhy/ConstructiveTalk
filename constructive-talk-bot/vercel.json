@@ -1,35 +1,19 @@
 {
   "version": 2,
-  "buildCommand": "cd constructive-talk-bot && pnpm install && pnpm run build",
-  "outputDirectory": "constructive-talk-bot/dist",
   "builds": [
     {
-      "src": "constructive-talk-bot/api/**/*.ts",
+      "src": "api/**/*.ts",
       "use": "@vercel/node"
     }
   ],
   "routes": [
     {
       "src": "/webhook",
-      "dest": "/constructive-talk-bot/api/webhook.ts",
-      "methods": ["POST", "OPTIONS"],
-      "headers": {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Headers": "Content-Type, x-line-signature"
-      }
+      "dest": "/api/webhook.ts"
     },
     {
       "src": "/health",
-      "dest": "/constructive-talk-bot/api/health.ts",
-      "methods": ["GET"],
-      "headers": {
-        "Access-Control-Allow-Origin": "*"
-      }
+      "dest": "/api/health.ts"
     }
-  ],
-  "env": {
-    "NODE_ENV": "production"
-  },
-  "public": true,
-  "installCommand": "pnpm install"
+  ]
 }
