@@ -1,0 +1,1 @@
+@general-rules.mdc 今後作成するファイルについては、composerで指示したpromptを記録するmdファイル（*_PROMPT.md）を、作成するファイルごとに作成するルールを作って
