@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { ChatMessage } from './ChatMessage';
 import { ChatInput } from './ChatInput';
 import { ContextPanel } from './ContextPanel';
+import { SessionList } from './SessionList';
 import { saveSession, getSession } from '../lib/kv';
 
 export interface Message {
@@ -14,6 +15,7 @@ export interface Message {
 }
 
 export function ChatContainer() {
+  const messageEndRef = useRef<HTMLDivElement>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSummarizing, setIsSummarizing] = useState(false);
@@ -26,6 +28,7 @@ export function ChatContainer() {
     time: new Date().toLocaleTimeString(),
     alcoholLevel: '0',
   });
+  const [isSessionListOpen, setIsSessionListOpen] = useState(false);
 
   // セッションの読み込み
   useEffect(() => {
@@ -177,8 +180,70 @@ export function ChatContainer() {
     }
   };
 
+  const scrollToBottom = () => {
+    messageEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  // メッセージが追加されたときに自動スクロール
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, isLoading]);
+
+  const handleSessionSelect = useCallback(async (selectedSessionId: string) => {
+    try {
+      const session = await getSession(selectedSessionId);
+      if (session) {
+        // 既存のセッションの場合
+        setMessages(session.messages);
+        setContext(session.context);
+      } else {
+        // 新規セッションの場合
+        setMessages([]);
+        setContext({
+          mood: '',
+          location: '',
+          time: new Date().toLocaleTimeString(),
+          alcoholLevel: '0',
+        });
+      }
+      setSessionId(selectedSessionId);
+      
+      // URLを更新
+      const urlParams = new URLSearchParams(window.location.search);
+      urlParams.set('session', selectedSessionId);
+      window.history.pushState({}, '', `?${urlParams.toString()}`);
+      
+      // セッションリストを閉じる（モバイル）
+      setIsSessionListOpen(false);
+    } catch (error) {
+      console.error('Failed to load session:', error);
+      setError('セッションの読み込みに失敗しました');
+    }
+  }, []);
+
   return (
     <div className="relative flex flex-col h-[calc(100vh-12rem)]">
+      {/* モバイル用セッションリストトグルボタン */}
+      <button
+        className="md:hidden fixed top-4 left-4 z-50 bg-blue-500 text-white p-2 rounded-full shadow-lg"
+        onClick={() => setIsSessionListOpen(!isSessionListOpen)}
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="h-6 w-6"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M4 6h16M4 12h16M4 18h16"
+          />
+        </svg>
+      </button>
+
       {/* モバイル用コンテキストパネルトグルボタン */}
       <button
         className="md:hidden fixed top-4 right-4 z-50 bg-blue-500 text-white p-2 rounded-full shadow-lg"
@@ -199,6 +264,18 @@ export function ChatContainer() {
           />
         </svg>
       </button>
+
+      {/* セッションリスト */}
+      <div
+        className={`fixed inset-y-0 left-0 w-80 bg-white shadow-lg transform transition-transform duration-300 ease-in-out ${
+          isSessionListOpen ? 'translate-x-0' : '-translate-x-full'
+        } md:relative md:translate-x-0 md:shadow-none md:mr-4`}
+      >
+        <SessionList
+          onSessionSelect={handleSessionSelect}
+          currentSessionId={sessionId}
+        />
+      </div>
 
       {/* メインチャットエリア */}
       <div className="flex-1 flex flex-col bg-white rounded-lg shadow-lg overflow-hidden">
@@ -244,6 +321,7 @@ export function ChatContainer() {
               <span className="block sm:inline">{error}</span>
             </div>
           )}
+          <div ref={messageEndRef} />
         </div>
         <ChatInput onSendMessage={handleSendMessage} isLoading={isLoading} />
       </div>
