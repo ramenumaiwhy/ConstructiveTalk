@@ -33,6 +33,7 @@ app.get('/health', (_: Request, res: Response) => {
   console.log('[Health] Health check requested');
   const channelSecret = process.env.LINE_CHANNEL_SECRET;
   const channelAccessToken = process.env.LINE_CHANNEL_ACCESS_TOKEN;
+  const defaultRichMenuId = process.env.DEFAULT_RICH_MENU_ID;
 
   const status = {
     status: 'ok',
@@ -41,6 +42,7 @@ app.get('/health', (_: Request, res: Response) => {
     line: {
       hasChannelSecret: !!channelSecret,
       hasAccessToken: !!channelAccessToken,
+      hasRichMenuId: !!defaultRichMenuId,
       secretLength: channelSecret ? channelSecret.length : 0,
       tokenLength: channelAccessToken ? channelAccessToken.length : 0
     }
@@ -55,7 +57,17 @@ app.post('/webhook',
   (req: Request, res: Response, next: NextFunction) => {
     // Webhookリクエストのログ（署名検証前）
     console.log(`[${new Date().toISOString()}] Webhook request received`);
-    console.log('[Webhook] x-line-signature:', req.headers['x-line-signature']);
+    console.log('[Webhook] Headers:', JSON.stringify(req.headers, null, 2));
+    const signature = req.headers['x-line-signature'];
+    if (!signature) {
+      console.error('[Webhook] No signature found in headers');
+      res.status(401).json({
+        status: 'error',
+        message: 'No signature found',
+        timestamp: new Date().toISOString()
+      });
+      return;
+    }
     next();
   },
   middleware(middlewareConfig),
@@ -87,9 +99,15 @@ app.post('/webhook',
                 throw new Error('User ID not found in follow event');
               }
               
+              const defaultRichMenuId = process.env.DEFAULT_RICH_MENU_ID;
+              if (!defaultRichMenuId) {
+                console.error('[RichMenu] DEFAULT_RICH_MENU_ID is not set');
+                return;
+              }
+              
               // リッチメニューを設定
               try {
-                await client.linkRichMenuToUser(userId, process.env.DEFAULT_RICH_MENU_ID || '');
+                await client.linkRichMenuToUser(userId, defaultRichMenuId);
                 console.log(`[RichMenu] Successfully linked rich menu to user: ${userId}`);
               } catch (error) {
                 console.error('[RichMenu] Error linking rich menu:', error);
@@ -123,6 +141,7 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
 });
 
 export default app;

@@ -1,88 +1,95 @@
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import { middleware, WebhookEvent, Client, MiddlewareConfig } from '@line/bot-sdk';
 import { lineConfig, port } from './config/line';
 import { handleEvent } from './controllers/lineController';
+import { RichMenuManager } from './services/RichMenuManager';
 
 const app = express();
 const client = new Client(lineConfig);
+const richMenuManager = new RichMenuManager(client);
+
+// Express Request型の拡張
+declare global {
+  namespace Express {
+    interface Request {
+      rawBody?: Buffer;
+    }
+  }
+}
 
 // リクエストロギングミドルウェア
-const requestLogger: express.RequestHandler = (req, res, next) => {
+const requestLogger = (req: Request, res: Response, next: NextFunction): void => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
-  console.log('Headers:', req.headers);
+  console.log('[Request] Headers:', req.headers);
   if (req.method !== 'GET') {
-    console.log('Body:', req.body);
+    const bodyLog = req.body ? JSON.stringify(req.body, null, 2) : 'No body';
+    console.log('[Request] Body:', bodyLog);
   }
   next();
 };
 
 // ミドルウェアの設定
-app.use(requestLogger);
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-// CORSミドルウェア
-const corsMiddleware: express.RequestHandler = (req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, x-line-signature');
-  if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
+// 1. rawBodyを保持するミドルウェア
+app.use(express.json({
+  verify: (req: Request, _: Response, buf: Buffer) => {
+    req.rawBody = buf;
   }
-  next();
-};
+}));
 
-app.use(corsMiddleware);
+// 2. リクエストロギング
+app.use(requestLogger);
 
 // LINE Botの設定
 const middlewareConfig: MiddlewareConfig = {
-  channelSecret: lineConfig.channelSecret || ''
+  channelSecret: lineConfig.channelSecret || '',
 };
 
 // Webhookエンドポイント
-app.post('/webhook', middleware(middlewareConfig), async (req: express.Request, res: express.Response) => {
-  console.log('[Webhook] Request received:', {
-    headers: req.headers,
-    body: req.body
-  });
+app.post('/webhook', 
+  middleware(middlewareConfig),
+  async (req: Request, res: Response) => {
+    try {
+      const events: WebhookEvent[] = req.body.events;
+      
+      if (!events || events.length === 0) {
+        console.log('[Webhook] No events received');
+        res.status(200).end();
+        return;
+      }
 
-  try {
-    const events: WebhookEvent[] = req.body.events;
-    console.log('[Webhook] Processing events:', events);
+      console.log(`[Webhook] Processing ${events.length} events`);
+      
+      await Promise.all(
+        events.map(async (event) => {
+          try {
+            console.log('[Webhook] Event:', {
+              type: event.type,
+              timestamp: new Date(event.timestamp).toISOString(),
+              userId: event.source.userId
+            });
+            
+            await handleEvent(event);
+          } catch (err) {
+            console.error('[Webhook] Event handling error:', err);
+            throw err;
+          }
+        })
+      );
 
-    if (!events || events.length === 0) {
-      console.log('[Webhook] No events received');
+      console.log('[Webhook] All events processed successfully');
       res.status(200).end();
-      return;
+    } catch (err) {
+      console.error('[Webhook] Error:', err);
+      res.status(500).json({
+        message: 'Internal server error',
+        error: err instanceof Error ? err.message : 'Unknown error'
+      });
     }
-
-    await Promise.all(
-      events.map(async (event) => {
-        try {
-          console.log('[Webhook] Processing event:', event);
-          await handleEvent(event);
-          console.log('[Webhook] Event processed successfully');
-        } catch (err) {
-          console.error('[Webhook] Error handling event:', err);
-          throw err;
-        }
-      })
-    );
-
-    console.log('[Webhook] All events processed successfully');
-    res.status(200).end();
-  } catch (err) {
-    console.error('[Webhook] Error:', err);
-    res.status(500).json({
-      message: 'Internal server error',
-      error: err instanceof Error ? err.message : 'Unknown error'
-    });
   }
-});
+);
 
 // ヘルスチェックエンドポイント
-app.get('/health', (_, res) => {
+app.get('/health', (_: Request, res: Response) => {
   console.log('[Health] Health check requested');
   res.status(200).json({
     status: 'OK',
@@ -95,7 +102,7 @@ app.get('/health', (_, res) => {
 });
 
 // デフォルトルート
-app.get('/', (_, res) => {
+app.get('/', (_: Request, res: Response) => {
   res.status(200).json({
     status: 'OK',
     message: 'LINE Bot server is running'
@@ -103,7 +110,7 @@ app.get('/', (_, res) => {
 });
 
 // エラーハンドリング
-app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
+app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   console.error('[Error] Unhandled error:', err);
   res.status(500).json({
     message: 'Internal server error',
@@ -111,11 +118,18 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
   });
 });
 
-// サーバー起動
-app.listen(port, () => {
+// サーバー起動とリッチメニューのセットアップ
+app.listen(port, async () => {
   console.log(`[Server] Running on port ${port}`);
   console.log('[Server] LINE Config:', {
     hasAccessToken: !!lineConfig.channelAccessToken,
     hasSecret: !!lineConfig.channelSecret
   });
-}); 
+
+  try {
+    await richMenuManager.setupDefaultRichMenus();
+    console.log('[Server] リッチメニューのセットアップが完了しました');
+  } catch (error) {
+    console.error('[Server] リッチメニューのセットアップに失敗しました:', error);
+  }
+});
